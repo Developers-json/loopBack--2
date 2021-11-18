@@ -15,6 +15,7 @@ import {
 import {Producto} from '../models';
 import {ProductoRepository} from '../repositories';
 
+
 @authenticate("admin")
 export class ProductoController {
   constructor(

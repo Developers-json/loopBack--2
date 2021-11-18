@@ -7,22 +7,29 @@ import {AutenticacionService} from '../services';
 
 export class EstrategiaAdministrador implements AuthenticationStrategy {
   name: string = 'admin';
+  perfil: UserProfile;
   constructor(
     @service(AutenticacionService)
     public servicioAutenticacion: AutenticacionService
   ) {
 
   }
-
+  getPerfil() {
+    return this.perfil
+  }
   async authenticate(request: Request): Promise<UserProfile | undefined> {
     const token = parseBearerToken(request)
     if (token) {
       const datos = this.servicioAutenticacion.ValidarTokenJWT(token)
+      //console.log(datos)
       if (datos) {
-        const perfil: UserProfile = Object.assign({
-          nombre: datos.data.nomrbe
+        this.perfil = Object.assign({
+          id: datos.data.id,
+          correo: datos.data.correo,
+          telefono: datos.data.telefono
         })
-        return perfil
+        //console.log(perfil)
+        return this.perfil
       } else {
         throw new HttpErrors[401]("El token incluido no es valido.")
       }

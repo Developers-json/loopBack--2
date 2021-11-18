@@ -29,12 +29,22 @@ export class AutenticacionService {
     return CryptoJS.MD5(clave).toString();
   }
 
+  GenerarCodigo() {
+    var maxLength = 10;
+    var minLength = 6;
+    var password = "";
+
+    var randomLength = Math.floor(Math.random() * (maxLength - minLength)) + minLength;
+    password = generatePassword(randomLength, false, /[\w\d\?\-]/);
+    return password
+  }
 
   GenerarTokenJWT(persona: Persona) {
     const token = jwt.sign({
       data: {
         id: persona.id,
-        correo: persona.Correo
+        correo: persona.Correo,
+        telefono: persona.Celular
       }
     },
       keys.claveJWT)

@@ -14,7 +14,7 @@ import {
 } from '@loopback/rest';
 import {keys} from '../config/keys';
 //import fetch from "node-fetch";
-import {Credenciales, Persona} from '../models';
+import {CambioClabe, Credenciales, Persona, RecuperarClave} from '../models';
 import {PersonaRepository} from '../repositories';
 import {AutenticacionService} from '../services';
 const fetch = require("node-fetch")
@@ -26,6 +26,7 @@ export class PersonaController {
     @service(AutenticacionService)
     public servicioAutenticacion: AutenticacionService
   ) { }
+
   @post('/login')
   @response(200, {
     description: "Identificacion de usuarios"
@@ -40,13 +41,75 @@ export class PersonaController {
         datos: {
           id: p.id,
           nombre: p.Nombre,
-          correo: p.Correo
+          correo: p.Correo,
+          telefono: p.Celular
         },
         tk: token
       }
     } else {
       throw new HttpErrors[404]("Datos invalidos")
     }
+  }
+
+  @post('/cambio-clave')
+  @response(200, {
+    description: "Se genera un codigo para validar el cambio de contraseña"
+  })
+  async ValidarCambioClave(
+    @requestBody() CambioClave: CambioClabe
+  ): Promise<Boolean> {
+    const usuario = await this.personaRepository.findOne({
+      where: {
+        Correo: CambioClave.correo
+      }
+    })
+    if (usuario) {
+      const codigo = this.servicioAutenticacion.GenerarCodigo()
+      usuario.Codigo = codigo
+      await this.personaRepository.updateById(usuario.id, usuario)
+      //Se envio la clave al celular del usuario
+      const destino = usuario.Celular
+      const contenido = `Hola ${usuario.Nombre + " " + usuario.Apellido}, te enviamos el codigo de verificacion para el cambio de contraseña: ${usuario.Codigo}`
+      await fetch(`${keys.urlServicioNotificaciones}/sms?mensaje=${contenido}&telefono=${destino}`)
+        .then((data: any) => {
+          console.log(data)
+        })
+      return true
+    }
+    return false
+  }
+
+  @post('/recuperar-clave')
+  @response(200, {
+    description: "Recuperar clave del usuario"
+  })
+  async RecuperarClave(
+    @requestBody() RecuperClave: RecuperarClave
+  ): Promise<Boolean> {
+    const usuario = await this.personaRepository.findOne({
+      where: {
+        Correo: RecuperClave.correo
+      }
+    })
+    if (usuario) {
+      if (usuario.Codigo == RecuperClave.codigo) {
+        const claveEncriptada = this.servicioAutenticacion.EncriptarClave(RecuperClave.password)
+        usuario.Clave = claveEncriptada
+        await this.personaRepository.updateById(usuario.id, usuario)
+        //Se notifica al usuario sobre el cambio de la cuenta por correo
+        const destino = usuario.Correo
+        const asunto = 'Notificacion de Cambio de contraseña en la plataforma'
+        const contenido = `Hola ${usuario.Nombre + " " + usuario.Apellido}, te notificamos que se ha cambiado la contraseña de tu cuenta con el nombre de usuario: ${usuario.Correo}`
+        await fetch(`${keys.urlServicioNotificaciones}/mailSMTP?email=${destino}&asunto=${asunto}&mensaje=${contenido}`)
+          .then((data: any) => {
+            console.log(data)
+          })
+        return true
+      } else {
+        return false
+      }
+    }
+    return false
   }
 
   @post('/personas')
