@@ -14,9 +14,7 @@ export class EstrategiaAdministrador implements AuthenticationStrategy {
   ) {
 
   }
-  getPerfil() {
-    return this.perfil
-  }
+
   async authenticate(request: Request): Promise<UserProfile | undefined> {
     const token = parseBearerToken(request)
     if (token) {
